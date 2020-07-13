@@ -30,8 +30,6 @@ count_pages = 0
 
 
 def start_command(update, context):
-    context.user_data[UNIVERSITY] = None
-    context.user_data[INTERVAL] = None
     button_list = [
         InlineKeyboardButton(text="News 📚", callback_data=str(NEWS)),
         InlineKeyboardButton(text="Trends 🏆", callback_data=str(TRENDS)),
@@ -52,8 +50,6 @@ def start_command(update, context):
 def menu(update, context):
     query = update.callback_query
     query.answer()
-    context.user_data[UNIVERSITY] = None
-    context.user_data[INTERVAL] = None
     button_list = [
         InlineKeyboardButton(text="News 📚", callback_data=str(NEWS)),
         InlineKeyboardButton(text="Trends 🏆", callback_data=str(TRENDS)),
@@ -92,6 +88,8 @@ def unknown(update, context):
 
 
 def news(update, context):
+    context.user_data[UNIVERSITY] = None
+    context.user_data[INTERVAL] = None
     query = update.callback_query
     query.answer()
     keyboard = [
@@ -109,6 +107,7 @@ def news(update, context):
 
 
 def interval(update, context):
+    query = update.callback_query
     keyboard = [
         InlineKeyboardButton("1 Day", callback_data=str(ONE_DAY)),
         InlineKeyboardButton("3 Days", callback_data=str(THREE_DAYS)),
@@ -119,9 +118,10 @@ def interval(update, context):
     text = "💬 How long do you want to see the news?\n" \
            + "Choose one of the proposed options:"
 
-    if context.user_data.get(UNIVERSITY) is None or context.user_data.get(UNIVERSITY) == "all":
-        context.user_data[UNIVERSITY] = "all"
-        query = update.callback_query
+    if update.callback_query.data != str(FAIL_INTERVAL):
+        context.user_data[UNIVERSITY] = update.callback_query.data
+
+    if update.callback_query.data == 'all' or update.callback_query.data == str(FAIL_INTERVAL):
         query.answer()
         query.edit_message_text(
             text=text,
@@ -153,7 +153,7 @@ def news_request(update, context):
     if data == '[]':
         update.callback_query.data = str(FAIL_INTERVAL)
         interval_error(update, context)
-        return
+        return False
 
     # unicode(data)
     # RESULT IN LIST
@@ -170,36 +170,36 @@ def news_request(update, context):
         list_news_items.append("🔸 *" + news_item.title + "*" + "\n"
                                + description.rstrip() + "...\n"
                                + "_Link:_ [show details](" + news_item.link + ")")
+    return True
 
 
 def show_news(update, context):
-    news_request(update, context)
-    if str(update.callback_query.data) == str(FAIL_INTERVAL):
+    if not news_request(update, context):
         return NEWS_STATE
+
+    query = update.callback_query
+    query.answer()
+
+    # PAGINATION
+    length = len(list_news_items)
+    if length % 3 == 0:
+        global count_pages
+        count_pages = int(length / 3)
     else:
-        query = update.callback_query
-        query.answer()
+        count_pages = int(length / 3) + 1
 
-        # PAGINATION
-        length = len(list_news_items)
-        if length % 3 == 0:
-            global count_pages
-            count_pages = int(length / 3)
-        else:
-            count_pages = int(length / 3) + 1
+    paginator = InlineKeyboardPaginator(
+        count_pages,
+        data_pattern='character#{page}'
+    )
+    query.edit_message_text(
+        text="\n\n".join(list_news_items[:3]),
+        reply_markup=paginator.markup,
+        parse_mode=ParseMode.MARKDOWN,
+        disable_web_page_preview=True
+    )
 
-        paginator = InlineKeyboardPaginator(
-            count_pages,
-            data_pattern='character#{page}'
-        )
-        query.edit_message_text(
-            text="\n\n".join(list_news_items[:3]),
-            reply_markup=paginator.markup,
-            parse_mode=ParseMode.MARKDOWN,
-            disable_web_page_preview=True
-        )
-
-        return NEWS_STATE
+    return NEWS_STATE
 
 
 def characters_page_callback(update, context):
@@ -305,6 +305,25 @@ def charts(update, context):
         reply_markup=reply_markup
     )
     return CHARTS_STATE
+
+
+def menu_command(update, context):
+    button_list = [
+        InlineKeyboardButton(text="News 📚", callback_data=str(NEWS)),
+        InlineKeyboardButton(text="Trends 🏆", callback_data=str(TRENDS)),
+        InlineKeyboardButton(text="Сharts 📈", callback_data=str(CHARTS))
+    ]
+    reply_markup = InlineKeyboardMarkup(build_menu(button_list, n_cols=1))
+
+    context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="Hello! 🤓\n" +
+             "Are you interested in news of the leading universities in the world?\n" +
+             "I can help you! 👻\n" +
+             "Choose one of the proposed options:",
+        reply_markup=reply_markup
+    )
+    return MENU_STATE
 
 
 def main(token):
