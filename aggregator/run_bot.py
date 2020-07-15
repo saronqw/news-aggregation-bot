@@ -404,7 +404,3 @@ def main(token):
     dispatcher.add_handler(CommandHandler('restart', restart, filters=Filters.user(username=['@saronqw', '@gilevAn'])))
     updater.start_polling()
     updater.idle()
-
-
-if __name__ == '__main__':
-    main(sys.argv[1])
