@@ -1,7 +1,10 @@
 import json
 import logging
+import os
 import sys
+from threading import Thread
 
+import time
 import requests
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, \
     ParseMode
@@ -118,7 +121,7 @@ def interval(update, context):
     text = "💬 How long do you want to see the news?\n" \
            + "Choose one of the proposed options:"
 
-    if update.callback_query.data != str(FAIL_INTERVAL):
+    if str(update.callback_query.data) != str(FAIL_INTERVAL):
         context.user_data[UNIVERSITY] = update.callback_query.data
 
     if update.callback_query.data == 'all' or update.callback_query.data == str(FAIL_INTERVAL):
@@ -147,7 +150,7 @@ def news_request(update, context):
     interval_time = context.user_data[INTERVAL]
 
     # REQUEST
-    r = requests.get('http://127.0.0.1:8000/api/v1/rest_api/lastnews/?interval=' + interval_time + "&name=" + name)
+    r = requests.get('http://192.168.0.25/api/v1/rest_api/lastnews/?interval=' + interval_time + "&name=" + name)
     data = json.dumps(r.json(), ensure_ascii=False, indent=4)
 
     if data == '[]':
@@ -308,33 +311,60 @@ def charts(update, context):
 
 
 def menu_command(update, context):
-    button_list = [
-        InlineKeyboardButton(text="News 📚", callback_data=str(NEWS)),
-        InlineKeyboardButton(text="Trends 🏆", callback_data=str(TRENDS)),
-        InlineKeyboardButton(text="Сharts 📈", callback_data=str(CHARTS))
-    ]
-    reply_markup = InlineKeyboardMarkup(build_menu(button_list, n_cols=1))
+    start_command(update, context)
+    return MENU_STATE
+
+
+def trends_command(update, context):
+    text = '🤓 IT\'S TRENDS:\n`' \
+           + ' 1. COVID19                  666\n' \
+           + ' 2. BTS                      629\n' \
+           + ' 3. LGBT                     433\n' \
+           + ' 4. Last Of Us 2             325\n' \
+           + ' 5. Пустые города            277\n' \
+           + ' 6. 5G                       256\n' \
+           + ' 7. Разумное потребление     128\n' \
+           + ' 8. Искусственный интеллект   64\n' \
+           + ' 9. Носки с сандалиями        32\n' \
+           + '10. Big Data                  16`'
 
     context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text="Hello! 🤓\n" +
-             "Are you interested in news of the leading universities in the world?\n" +
-             "I can help you! 👻\n" +
-             "Choose one of the proposed options:",
-        reply_markup=reply_markup
+        text=text,
+        parse_mode=ParseMode.MARKDOWN
     )
-    return MENU_STATE
+
+
+def charts_command(update, context):
+    text = "It's Charts! 🤓\n"
+
+    context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=text,
+        parse_mode=ParseMode.MARKDOWN
+    )
 
 
 def main(token):
     updater = Updater(token, use_context=True)
     dispatcher = updater.dispatcher
 
+    def stop_and_restart():
+        """Gracefully stop the Updater and replace the current process with a new one"""
+        updater.stop()
+        os.execl(sys.executable, sys.executable, *sys.argv)
+
+    def restart(update, context):
+        update.message.reply_text('Bot is restarting...')
+        Thread(target=stop_and_restart).start()
+        time.sleep(2)
+        context.bot.send_message(chat_id=update.effective_chat.id, text="Done!")
+
     start_handler = CommandHandler('start', start_command)
-    dispatcher.add_handler(CommandHandler('help', help_command))
+    menu_handler = CommandHandler('menu', menu_command)
 
     conversation_handler = ConversationHandler(
-        entry_points=[start_handler],
+        entry_points=[start_handler, menu_handler],
         states={
             NEWS_STATE: [
                 CallbackQueryHandler(interval, pattern='^' + str(ALL_UNIVERSITIES) + '$'),
@@ -360,10 +390,18 @@ def main(token):
             ],
             TYPING: [MessageHandler(Filters.text, save_input)],
         },
-        fallbacks=[start_handler]
+        fallbacks=[
+            # start_handler,
+            menu_handler,
+            CommandHandler('restart', restart, filters=Filters.user(username=['@saronqw', '@gilevAn'])),
+            CommandHandler('trends', trends_command),
+            CommandHandler('charts', charts_command)
+        ]
     )
 
+    dispatcher.add_handler(CommandHandler('help', help_command))
     dispatcher.add_handler(conversation_handler)
+    dispatcher.add_handler(CommandHandler('restart', restart, filters=Filters.user(username=['@saronqw', '@gilevAn'])))
     updater.start_polling()
     updater.idle()
 
