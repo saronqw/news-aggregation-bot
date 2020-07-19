@@ -33,6 +33,7 @@ count_pages = 0
 
 
 def start_command(update, context):
+    logger.info("New connection: " + str(update.effective_user))
     button_list = [
         InlineKeyboardButton(text="News 📚", callback_data=str(NEWS)),
         InlineKeyboardButton(text="Trends 🏆", callback_data=str(TRENDS)),
@@ -40,13 +41,16 @@ def start_command(update, context):
     ]
     reply_markup = InlineKeyboardMarkup(build_menu(button_list, n_cols=1))
 
+    text = "Hello, " + update.effective_user.first_name + "! 🤓\n" \
+           + "Are you interested in news of the leading universities in the world?\n" \
+           + "I can help you! 👻\n" \
+           + "Choose one of the proposed options:"
+
     update.message.reply_text(
-        text="Hello! 🤓\n" +
-             "Are you interested in news of the leading universities in the world?\n" +
-             "I can help you! 👻\n" +
-             "Choose one of the proposed options:",
+        text=text,
         reply_markup=reply_markup
     )
+
     return MENU_STATE
 
 
@@ -61,7 +65,7 @@ def menu(update, context):
     reply_markup = InlineKeyboardMarkup(build_menu(button_list, n_cols=1))
 
     query.edit_message_text(
-        text="Hello! 🤓\n" +
+        text="Hello, " + update.effective_user.first_name + "! 🤓\n" +
              "Are you interested in news of the leading universities in the world?\n" +
              "I can help you! 👻\n" +
              "Choose one of the proposed options:",
@@ -72,18 +76,6 @@ def menu(update, context):
 
 def help_command(update, context):
     update.message.reply_text('Help!')
-
-
-def build_menu(buttons,
-               n_cols,
-               header_buttons=None,
-               footer_buttons=None):
-    new_menu = [buttons[i:i + n_cols] for i in range(0, len(buttons), n_cols)]
-    if header_buttons:
-        new_menu.insert(0, [header_buttons])
-    if footer_buttons:
-        new_menu.append([footer_buttons])
-    return new_menu
 
 
 def unknown(update, context):
@@ -152,7 +144,6 @@ def news_request(update, context):
     # REQUEST
     r = requests.get('http://192.168.0.25/api/v1/rest_api/lastnews/?interval=' + interval_time + "&name=" + name)
     data = json.dumps(r.json(), ensure_ascii=False, indent=4)
-
     if data == '[]':
         update.callback_query.data = str(FAIL_INTERVAL)
         interval_error(update, context)
@@ -304,8 +295,9 @@ def charts(update, context):
     reply_markup = InlineKeyboardMarkup(build_menu(button_list, n_cols=1))
 
     query.edit_message_text(
-        text="It's Charts! 🤓\n",
-        reply_markup=reply_markup
+        text=get_charts_text(),
+        reply_markup=reply_markup,
+        parse_mode=ParseMode.MARKDOWN
     )
     return CHARTS_STATE
 
@@ -336,13 +328,32 @@ def trends_command(update, context):
 
 
 def charts_command(update, context):
-    text = "It's Charts! 🤓\n"
-
     context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text=text,
+        text=get_charts_text(),
         parse_mode=ParseMode.MARKDOWN
     )
+
+
+def get_charts_text():
+    return 'You have selected the "Charts" menu item.\n' \
+           + 'This is a wonderful choice! 🦄\n' \
+           + 'Already today you can be the first to get acquainted with the analytical charts of the news of the ' \
+             'world\'s 🥳\n' \
+           + 'Just click on the link below.\n' \
+           + '_Link:_ [show details](46.180.235.39/analyzer/) 📈'
+
+
+def build_menu(buttons,
+               n_cols,
+               header_buttons=None,
+               footer_buttons=None):
+    new_menu = [buttons[i:i + n_cols] for i in range(0, len(buttons), n_cols)]
+    if header_buttons:
+        new_menu.insert(0, [header_buttons])
+    if footer_buttons:
+        new_menu.append([footer_buttons])
+    return new_menu
 
 
 def main(token):
@@ -356,9 +367,11 @@ def main(token):
 
     def restart(update, context):
         update.message.reply_text('Bot is restarting...')
+        logger.info('Bot is restarting...')
         Thread(target=stop_and_restart).start()
         time.sleep(2)
         context.bot.send_message(chat_id=update.effective_chat.id, text="Done!")
+        logger.info('Bot is restarted!')
 
     start_handler = CommandHandler('start', start_command)
     menu_handler = CommandHandler('menu', menu_command)
