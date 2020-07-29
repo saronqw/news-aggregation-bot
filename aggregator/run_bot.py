@@ -145,6 +145,7 @@ def news_request(update, context):
     # REQUEST
     r = requests.get('http://127.0.0.1:8000/api/v1/rest_api/lastnews/?interval=' + interval_time + "&name=" + name)
     data = json.dumps(r.json(), ensure_ascii=False, indent=4)
+    print(data)
     if data == '[]':
         update.callback_query.data = str(FAIL_INTERVAL)
         interval_error(update, context)
@@ -274,9 +275,22 @@ def get_trends_text():
     r = requests.get('http://127.0.0.1:8000/analyzer/keywords')
     data = json.dumps(r.json(), ensure_ascii=False, indent=4)
     result = json.loads(data, object_hook=keyword_decoder)
-    text = '🤓 IT\'S TRENDS:\n'
+    result.sort(key = lambda k: k.coef * k.count, reverse=True)
+    text = '🤓 IT\'S TRENDS:\n`'
+    number = 1
     for keyword in result:
-        text += keyword.tag + '\n'
+        key_word = ''
+        score = str(round(keyword.coef * keyword.count*1500))
+        score_len = len(score)
+        key_word += (' ' + str(number) if number < 10 else str(number)) + '. ' + keyword.tag
+        limit = 30
+        text_len = len(key_word) + score_len
+        if text_len > limit:
+            key_word = key_word[:text_len - limit - 3 - score_len] + '...'
+            text_len = len(key_word) + score_len
+        text += key_word + ' '*(limit - text_len + 1) + score + '\n'
+        number += 1
+    text += '`'
     return text
 
 
