@@ -25,7 +25,7 @@ class InlineKeyboardPaginator:
         keyboard_dict = dict()
 
         if self.page_count == 1:
-            self._keyboard = list()
+            self._keyboard = [{"text": "MENU", "callback_data": "menu"}]
             return
 
         elif self.page_count <= 5:
@@ -108,6 +108,9 @@ class InlineKeyboardPaginator:
     def markup(self):
         if not self.keyboard:
             return None
+
+        if self._keyboard == [{"text": "MENU", "callback_data": "menu"}]:
+            return json.dumps({'inline_keyboard': [self.keyboard]})
 
         return json.dumps({'inline_keyboard': [self.keyboard, [{"text": "MENU", "callback_data": "menu"}]]})
 

@@ -11,6 +11,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, \
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, \
     ConversationHandler, MessageHandler, Filters
 
+from aggregator.model.keyword import Keyword
 from aggregator.model.news_item import NewsItem
 from pagination import InlineKeyboardPaginator
 
@@ -132,7 +133,7 @@ def interval(update, context):
 
 
 def news_request(update, context):
-    def object_decoder(obj):
+    def news_item_decoder(obj):
         return NewsItem(obj['title'], obj['description'], obj['link'], obj['pub_date'])
 
     # MEMORY VARIABLES
@@ -142,7 +143,7 @@ def news_request(update, context):
     interval_time = context.user_data[INTERVAL]
 
     # REQUEST
-    r = requests.get('http://192.168.0.25/api/v1/rest_api/lastnews/?interval=' + interval_time + "&name=" + name)
+    r = requests.get('http://127.0.0.1:8000/api/v1/rest_api/lastnews/?interval=' + interval_time + "&name=" + name)
     data = json.dumps(r.json(), ensure_ascii=False, indent=4)
     if data == '[]':
         update.callback_query.data = str(FAIL_INTERVAL)
@@ -152,7 +153,7 @@ def news_request(update, context):
     # unicode(data)
     # RESULT IN LIST
     result = json.loads(data,
-                        object_hook=object_decoder)
+                        object_hook=news_item_decoder)
     list_news_items.clear()
     for news_item in result:
         temp_word_list = news_item.description.split(" ")[:18]
@@ -255,6 +256,30 @@ def interval_error(update, context):
     )
 
 
+def get_trends_text():
+    # text = '🤓 IT\'S TRENDS:\n`' \
+    #        + ' 1. COVID19                  666\n' \
+    #        + ' 2. BTS                      629\n' \
+    #        + ' 3. LGBT                     433\n' \
+    #        + ' 4. Last Of Us 2             325\n' \
+    #        + ' 5. Пустые города            277\n' \
+    #        + ' 6. 5G                       256\n' \
+    #        + ' 7. Разумное потребление     128\n' \
+    #        + ' 8. Искусственный интеллект   64\n' \
+    #        + ' 9. Носки с сандалиями        32\n' \
+    #        + '10. Big Data                  16`'
+    def keyword_decoder(obj):
+        return Keyword(obj['coef'], obj['count'], obj['tag'], obj['university'])
+
+    r = requests.get('http://127.0.0.1:8000/analyzer/keywords')
+    data = json.dumps(r.json(), ensure_ascii=False, indent=4)
+    result = json.loads(data, object_hook=keyword_decoder)
+    text = '🤓 IT\'S TRENDS:\n'
+    for keyword in result:
+        text += keyword.tag + '\n'
+    return text
+
+
 def trends(update, context):
     query = update.callback_query
     query.answer()
@@ -264,17 +289,7 @@ def trends(update, context):
     ]
     reply_markup = InlineKeyboardMarkup(build_menu(button_list, n_cols=1))
 
-    text = '🤓 IT\'S TRENDS:\n`' \
-           + ' 1. COVID19                  666\n' \
-           + ' 2. BTS                      629\n' \
-           + ' 3. LGBT                     433\n' \
-           + ' 4. Last Of Us 2             325\n' \
-           + ' 5. Пустые города            277\n' \
-           + ' 6. 5G                       256\n' \
-           + ' 7. Разумное потребление     128\n' \
-           + ' 8. Искусственный интеллект   64\n' \
-           + ' 9. Носки с сандалиями        32\n' \
-           + '10. Big Data                  16`'
+    text = get_trends_text()
 
     query.edit_message_text(
         text=text,
@@ -308,17 +323,7 @@ def menu_command(update, context):
 
 
 def trends_command(update, context):
-    text = '🤓 IT\'S TRENDS:\n`' \
-           + ' 1. COVID19                  666\n' \
-           + ' 2. BTS                      629\n' \
-           + ' 3. LGBT                     433\n' \
-           + ' 4. Last Of Us 2             325\n' \
-           + ' 5. Пустые города            277\n' \
-           + ' 6. 5G                       256\n' \
-           + ' 7. Разумное потребление     128\n' \
-           + ' 8. Искусственный интеллект   64\n' \
-           + ' 9. Носки с сандалиями        32\n' \
-           + '10. Big Data                  16`'
+    text = get_trends_text()
 
     context.bot.send_message(
         chat_id=update.effective_chat.id,
