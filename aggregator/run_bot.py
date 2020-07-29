@@ -134,7 +134,7 @@ def interval(update, context):
 
 def news_request(update, context):
     def news_item_decoder(obj):
-        return NewsItem(obj['title'], obj['description'], obj['link'], obj['pub_date'])
+        return NewsItem(obj['title'], obj['description'], obj['link'], obj['pub_date'], obj['university'])
 
     # MEMORY VARIABLES
     context.user_data[INTERVAL] = update.callback_query.data
@@ -162,7 +162,21 @@ def news_request(update, context):
         for word in temp_word_list:
             description += word + " "
 
-        list_news_items.append("🔸 *" + news_item.title + "*" + "\n"
+        university_dict = {
+            1: 'TPU',
+            2: 'TSU',
+            3: 'NSUU',
+            4: 'Harvard',
+            5: 'Stanford',
+            6: 'Caltech',
+            7: 'Cambridge',
+            8: 'ITMO',
+            9: 'NUS',
+            10: 'SPSU',
+        }
+        name_university = university_dict.get(news_item.university, 'Unknown')
+
+        list_news_items.append("🔸 *[" + name_university + "] " + news_item.title + "*" + "\n"
                                + description.rstrip() + "...\n"
                                + "_Link:_ [show details](" + news_item.link + ")")
     return True
