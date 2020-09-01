@@ -289,7 +289,9 @@ def get_trends_text():
     data = json.dumps(r.json(), ensure_ascii=False, indent=4)
     result = json.loads(data, object_hook=keyword_decoder)
     result.sort(key=lambda k: k.score, reverse=True)
-    text = '🤓 IT\'S TRENDS:\n`'
+    text = '🏆 You have selected the "Trends" menu item.\n' \
+           'The most popular tags that have important implications in recent years in the world\'s leading ' \
+           'universities:\n`'
     number = 1
     for keyword in result:
         key_word = ''
@@ -367,12 +369,12 @@ def charts_command(update, context):
 
 
 def get_charts_text():
-    return 'You have selected the "Charts" menu item.\n' \
+    return '📈 You have selected the "Charts" menu item.\n' \
            + 'This is a wonderful choice! 🦄\n' \
            + 'Already today you can be the first to get acquainted with the analytical charts of the news of the ' \
              'world\'s 🥳\n' \
            + 'Just click on the link below.\n' \
-           + '_Link:_ [show details](46.180.235.39/analyzer/) 📈'
+           + '_Link:_ [charts! charts! charts!](46.180.235.39/analyzer/) 📌'
 
 
 def build_menu(buttons,
@@ -404,11 +406,11 @@ def main(token):
         context.bot.send_message(chat_id=update.effective_chat.id, text="Done!")
         logger.info('Bot is restarted!')
 
-    start_handler = CommandHandler('start', start_command)
+    # start_handler =
     menu_handler = CommandHandler('menu', menu_command)
 
     conversation_handler = ConversationHandler(
-        entry_points=[start_handler, menu_handler],
+        entry_points=[CommandHandler('start', start_command), menu_handler],
         states={
             NEWS_STATE: [
                 CallbackQueryHandler(interval, pattern='^' + str(ALL_UNIVERSITIES) + '$'),
@@ -435,7 +437,6 @@ def main(token):
             TYPING: [MessageHandler(Filters.text, save_input)],
         },
         fallbacks=[
-            # start_handler,
             menu_handler,
             CommandHandler('restart', restart, filters=Filters.user(username=['@saronqw', '@gilevAn'])),
             CommandHandler('trends', trends_command),
